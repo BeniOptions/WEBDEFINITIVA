@@ -203,6 +203,30 @@ select, input, button { font-family: inherit; }
 }
 
 /* ── Bundle highlight ── */
+/* ── Fondo animado: gradiente azul cian en movimiento ── */
+@keyframes boGradientFlow {
+  0%   { background-position: 0% 50%; }
+  25%  { background-position: 100% 0%; }
+  50%  { background-position: 100% 100%; }
+  75%  { background-position: 0% 100%; }
+  100% { background-position: 0% 50%; }
+}
+.bo-animated-bg {
+  background: linear-gradient(
+    135deg,
+    #7ac4df 0%,
+    #0d7e97 18%,
+    #9ed4ea 32%,
+    #0a5f73 48%,
+    #22b7d6 62%,
+    #7ec8e3 76%,
+    #0e6e87 90%,
+    #7ac4df 100%
+  );
+  background-size: 400% 400%;
+  animation: boGradientFlow 9s ease infinite;
+}
+
 @keyframes boBundleGlow {
   0%,100% { box-shadow: 0 0 0 0 rgba(34,183,214,.0); }
   50%      { box-shadow: 0 0 0 6px rgba(34,183,214,.18); }
@@ -256,6 +280,22 @@ html { scroll-behavior: smooth; }
   .bo-hero-social { animation: boSlideUp   0.65s cubic-bezier(0.23,1,0.32,1) 0.34s both; }
   .bo-hero-img    { animation: boFadeScale 0.75s cubic-bezier(0.23,1,0.32,1) 0.08s both; }
 }
+/* ── Hero product image: float + glow loop ── */
+@keyframes boHeroFloat {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  35%       { transform: translateY(-14px) rotate(-0.4deg); }
+  65%       { transform: translateY(-9px) rotate(0.4deg); }
+}
+@keyframes boHeroGlow {
+  0%, 100% { filter: drop-shadow(0 16px 40px rgba(34,183,214,0.16)); }
+  50%       { filter: drop-shadow(0 28px 64px rgba(34,183,214,0.34)); }
+}
+.bo-hero-product {
+  animation:
+    boHeroFloat 5.5s ease-in-out infinite 2s,
+    boHeroGlow  5.5s ease-in-out infinite 2s;
+}
+
 /* Detener animaciones si el usuario prefiere no movimiento */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

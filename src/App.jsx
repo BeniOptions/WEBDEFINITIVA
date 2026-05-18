@@ -5,7 +5,7 @@ const useS = useState;
 
 /* ===== SHARED HOOKS & UTILS ===== */
 
-function useSEO({ title, description, canonical, noindex = false }) {
+function useSEO({ title, description, canonical, noindex = false, breadcrumb = null }) {
   useEffect(() => {
     document.title = title;
     const sel = (s) => document.querySelector(s);
@@ -18,7 +18,32 @@ function useSEO({ title, description, canonical, noindex = false }) {
     set(sel('meta[property="og:url"]'), 'content', canonical);
     set(sel('meta[name="twitter:title"]'), 'content', title);
     set(sel('meta[name="twitter:description"]'), 'content', description);
-  }, [title, description, canonical, noindex]);
+
+    const existing = document.getElementById('page-schema');
+    if (breadcrumb) {
+      const schema = {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": breadcrumb.map((item, i) => ({
+          "@type": "ListItem",
+          "position": i + 1,
+          "name": item.name,
+          "item": item.url,
+        })),
+      };
+      if (existing) {
+        existing.textContent = JSON.stringify(schema);
+      } else {
+        const s = document.createElement('script');
+        s.id = 'page-schema';
+        s.type = 'application/ld+json';
+        s.textContent = JSON.stringify(schema);
+        document.head.appendChild(s);
+      }
+    } else if (existing) {
+      existing.remove();
+    }
+  }, [title, description, canonical, noindex, breadcrumb]);
 }
 
 const EASE = 'cubic-bezier(0.23,1,0.32,1)'; /* Apple spring */
@@ -47,7 +72,7 @@ function useReveal(delay = 0) {
   return [ref, vis];
 }
 
-function Reveal({ children, delay = 0, variant = 'up', style = {}, as: Tag = 'div' }) {
+function Reveal({ children, delay = 0, variant = 'up', duration = 0.55, style = {}, as: Tag = 'div' }) {
   const [ref, vis] = useReveal(delay);
   const v = REVEAL_VARIANTS[variant] || REVEAL_VARIANTS.up;
   return (
@@ -55,7 +80,7 @@ function Reveal({ children, delay = 0, variant = 'up', style = {}, as: Tag = 'di
       ...style,
       opacity: vis ? 1 : 0,
       transform: vis ? v.visible : v.hidden,
-      transition: `opacity 0.55s ${EASE}, transform 0.55s ${EASE}`,
+      transition: `opacity ${duration}s ${EASE}, transform ${duration}s ${EASE}`,
     }}>
       {children}
     </Tag>
@@ -93,23 +118,39 @@ function useIsMobile() {
   return m;
 }
 
+const BASE_PATH = window.location.pathname.startsWith('/WEBDEFINITIVA') ? '/WEBDEFINITIVA' : '';
+
 function nav(path) {
-  window.location.hash = path;
+  let fullPath = path;
+  if (BASE_PATH) {
+    if (!path.startsWith(BASE_PATH)) {
+      fullPath = path.startsWith('/') ? `${BASE_PATH}${path}` : `${BASE_PATH}/${path}`;
+    }
+  }
+  history.pushState(null, '', fullPath);
+  window.dispatchEvent(new PopStateEvent('popstate'));
 }
 
 let pendingScrollId = null;
 
 function navSection(path, sectionId) {
+  let fullPath = path;
+  if (BASE_PATH) {
+    if (!path.startsWith(BASE_PATH)) {
+      fullPath = path.startsWith('/') ? `${BASE_PATH}${path}` : `${BASE_PATH}/${path}`;
+    }
+  }
   if (sectionId) {
-    const currentPage = (window.location.hash || '#/').replace(/^#/, '') || '/';
-    if (currentPage === path) {
+    const currentPage = window.location.pathname;
+    if (currentPage === fullPath) {
       const el = document.getElementById(sectionId);
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       return;
     }
     pendingScrollId = sectionId;
   }
-  window.location.hash = path;
+  history.pushState(null, '', fullPath);
+  window.dispatchEvent(new PopStateEvent('popstate'));
 }
 
 /* ===== ICONS ===== */
@@ -147,7 +188,7 @@ function Logomark({ size = 28, color = "dark" }) {
 function Wordmark({ light = false, size = 28 }) {
   const ink = light ? "#fff" : "var(--bo-ink)";
   return (
-    <a href="#/" style={{ display: "inline-flex", alignItems: "center", gap: 12, textDecoration: "none" }}
+    <a href="/" style={{ display: "inline-flex", alignItems: "center", gap: 12, textDecoration: "none" }}
        onClick={(e) => { e.preventDefault(); nav('/'); }}>
       <Logomark size={size} color={light ? "light" : "dark"} />
       <div style={{ fontFamily: "var(--bo-font-display)", fontWeight: 700, fontSize: size * 0.72, letterSpacing: "-0.025em", color: ink, lineHeight: 1 }}>
@@ -184,7 +225,7 @@ function NavBar({ variant = "light", cartCount = 2 }) {
         <Wordmark light={isDark} size={26} />
         {!isMobile && (
           <nav style={{ display:"flex", gap:36, fontSize:14, color:txt, fontWeight:500 }} aria-label="Navegación principal">
-            {links.map(([l,p,s]) => <a key={l} href={"#"+p} className="bo-nav-link" style={lk} onClick={(e) => { e.preventDefault(); navSection(p,s); }}>{l}</a>)}
+            {links.map(([l,p,s]) => <a key={l} href={p} className="bo-nav-link" style={lk} onClick={(e) => { e.preventDefault(); navSection(p,s); }}>{l}</a>)}
           </nav>
         )}
         <div style={{ display:"flex", gap:16, alignItems:"center", color:txt }}>
@@ -214,7 +255,7 @@ function NavBar({ variant = "light", cartCount = 2 }) {
       {isMobile && open && (
         <div className={isDark ? "bo-glass-dark" : "bo-glass"} style={{ borderBottom:"1px solid var(--bo-line-soft)" }}>
           {links.map(([l,p,s]) => (
-            <a key={l} href={"#"+p} style={{ display:"block", padding:"16px 20px", fontSize:16, fontWeight:500, color:txt, textDecoration:"none", borderBottom:"1px solid var(--bo-line-soft)", cursor:"pointer" }}
+            <a key={l} href={p} style={{ display:"block", padding:"16px 20px", fontSize:16, fontWeight:500, color:txt, textDecoration:"none", borderBottom:"1px solid var(--bo-line-soft)", cursor:"pointer" }}
                onClick={(e) => { e.preventDefault(); navSection(p,s); setOpen(false); }}>{l}</a>
           ))}
         </div>
@@ -339,7 +380,7 @@ function Footer() {
             <div style={{ fontFamily: "var(--bo-font-mono)", fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--bo-cyan-bright)", marginBottom: 14 }}>{title}</div>
             <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 10 }}>
               {links.map(([l, href]) => (
-                <li key={l}><a href={"#"+href} style={{ fontSize: 14, color: "rgba(255,255,255,.7)", textDecoration: "none", cursor: "pointer" }} onClick={(e) => { e.preventDefault(); nav(href); }}>{l}</a></li>
+                <li key={l}><a href={href} style={{ fontSize: 14, color: "rgba(255,255,255,.7)", textDecoration: "none", cursor: "pointer" }} onClick={(e) => { e.preventDefault(); nav(href); }}>{l}</a></li>
               ))}
             </ul>
           </div>
@@ -535,6 +576,117 @@ function BundleBlock({ isMobile }) {
   );
 }
 
+/* ===== WAVE BACKGROUND ===== */
+
+function WaveBackground() {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    let animId;
+    let t = 0;
+
+    const WAVES = [
+      { r:8,  g:72,  b:100, amp:110, freq:0.0028, speed:0.9,  yc:0.30, op:0.82 },
+      { r:12, g:100, b:135, amp:85,  freq:0.0042, speed:-0.65, yc:0.52, op:0.70 },
+      { r:6,  g:55,  b:80,  amp:140, freq:0.0018, speed:1.3,  yc:0.72, op:0.75 },
+      { r:18, g:120, b:160, amp:65,  freq:0.0058, speed:-1.0, yc:0.42, op:0.55 },
+    ];
+
+    function resize() {
+      canvas.width  = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    function draw() {
+      const w = canvas.width, h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      WAVES.forEach(wave => {
+        ctx.beginPath();
+        ctx.moveTo(0, h);
+        for (let x = 0; x <= w + 4; x += 4) {
+          const y = wave.yc * h
+            + Math.sin(x * wave.freq + t * wave.speed) * wave.amplitude
+            + Math.sin(x * wave.freq * 2.1 + t * wave.speed * 0.7) * (wave.amp * 0.4);
+          ctx.lineTo(x, y);
+        }
+        ctx.lineTo(w, h);
+        ctx.closePath();
+
+        const grad = ctx.createLinearGradient(0, 0, 0, h);
+        grad.addColorStop(0,   `rgba(${wave.r},${wave.g},${wave.b},0)`);
+        grad.addColorStop(0.4, `rgba(${wave.r},${wave.g},${wave.b},${wave.op})`);
+        grad.addColorStop(1,   `rgba(${wave.r},${wave.g},${wave.b},${wave.op})`);
+        ctx.fillStyle = grad;
+        ctx.fill();
+      });
+
+      t += 0.018;
+      animId = requestAnimationFrame(draw);
+    }
+    draw();
+
+    return () => { cancelAnimationFrame(animId); window.removeEventListener('resize', resize); };
+  }, []);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 0,
+        pointerEvents: 'none', mixBlendMode: 'multiply',
+      }}
+    />
+  );
+}
+
+/* ===== HERO VIDEO COMPONENT ===== */
+
+function HeroVideo() {
+  const videoRef = useRef(null);
+  const [faded, setFaded] = useState(false);
+
+  const supportsVP9 = useRef(
+    typeof document !== 'undefined' &&
+    document.createElement('video').canPlayType('video/webm; codecs="vp9"') !== ''
+  ).current;
+
+  useEffect(() => {
+    const vid = videoRef.current;
+    if (!vid) return;
+    vid.play().catch(() => {});
+    /* Empieza a desvanecerse cuando aparecen las palabras principales */
+    const t = setTimeout(() => setFaded(true), 800);
+    return () => clearTimeout(t);
+  }, []);
+
+  return (
+    <video
+      ref={videoRef}
+      autoPlay muted playsInline
+      webkit-playsinline="true"
+      preload="auto"
+      style={{
+        width: '100%',
+        height: '100%',
+        objectFit: 'cover',
+        objectPosition: 'center',
+        opacity: faded ? 0 : 1,
+        transition: 'opacity 1.4s ease-out',
+        pointerEvents: 'none',
+        ...(supportsVP9 ? {} : { mixBlendMode: 'multiply' }),
+      }}
+    >
+      {supportsVP9 && <source src="assets/lifestyle/mp_alpha.webm" type="video/webm" />}
+      <source src="assets/lifestyle/mp_.mp4" type="video/mp4" />
+    </video>
+  );
+}
+
 /* ===== PAGE: HOME ===== */
 
 function HomeA() {
@@ -547,76 +699,121 @@ function HomeA() {
   });
   return (
     <div className="bo-root" style={{ background: "var(--bo-bg)" }}>
+
+      {/* ── ONDAS AZULES: fondo animado en toda la página ── */}
+      <WaveBackground />
+
       <Announcement />
       <NavBar />
 
-      {/* HERO */}
-      <section style={{ position: "relative", padding: isMobile ? "40px 20px 56px" : "60px 56px 80px", background: "linear-gradient(180deg,#fff 0%,#EBF8FB 100%)", overflow: "hidden" }}>
-        <div style={{ position: "absolute", top: -200, right: -150, width: 700, height: 700, borderRadius: "50%", background: "radial-gradient(circle,rgba(34,183,214,.18),transparent 65%)", pointerEvents: "none" }} />
-        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.05fr 0.95fr", gap: isMobile ? 40 : 72, alignItems: "center", position: "relative", maxWidth: 1328, margin: "0 auto" }}>
+      {/* ── HERO: vídeo explosión de fondo → título y producto animados ── */}
+      <section style={{
+        position: "relative",
+        minHeight: isMobile ? "auto" : "92vh",
+        background: "linear-gradient(160deg, rgba(255,255,255,0.68) 0%, rgba(223,243,249,0.62) 55%, rgba(200,236,246,0.58) 100%)",
+        overflow: "hidden",
+        display: "flex",
+        alignItems: "center",
+      }}>
+        {/* Acento radial cian en esquina superior derecha */}
+        <div style={{ position: "absolute", top: -180, right: -120, width: 640, height: 640, borderRadius: "50%", background: "radial-gradient(circle, rgba(34,183,214,.22), transparent 65%)", pointerEvents: "none", zIndex: 0 }} />
+
+        {/* Vídeo explosión producto */}
+        <div style={{ position: "absolute", inset: 0, zIndex: 1 }}>
+          <HeroVideo />
+        </div>
+
+        {/* Gradiente lateral izquierdo: garantiza legibilidad del texto */}
+        {!isMobile && (
+          <div style={{
+            position: "absolute", top: 0, bottom: 0, left: 0, width: "58%",
+            background: "linear-gradient(to right, rgba(255,255,255,0.96) 45%, rgba(220,243,250,0.6) 75%, transparent 100%)",
+            zIndex: 2, pointerEvents: "none",
+          }} />
+        )}
+        {isMobile && (
+          <div style={{ position: "absolute", inset: 0, background: "rgba(240,251,254,0.82)", zIndex: 2, pointerEvents: "none" }} />
+        )}
+
+        {/* Grid: texto (izq) | imagen producto (dcha) */}
+        <div style={{
+          position: "relative", zIndex: 3,
+          display: "grid",
+          gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+          gap: isMobile ? 32 : 72,
+          alignItems: "center",
+          maxWidth: 1440, margin: "0 auto",
+          padding: isMobile ? "88px 20px 64px" : "80px 56px",
+          width: "100%",
+        }}>
+
+          {/* TEXTO: animación escalonada tras la explosión */}
           <div>
-            <div className="bo-hero-badge" style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "8px 16px", borderRadius: 999, background: "var(--bo-cyan-tint)", color: "var(--bo-cyan-deep)", fontSize: 12, fontWeight: 600, letterSpacing: "0.02em", marginBottom: 24 }}>
-              <span style={{ width: 6, height: 6, borderRadius: 999, background: "var(--bo-cyan)" }} />
-              Avalado por más de 12.400 noches reales
-            </div>
-            <h1 className="bo-hero-h1" style={{ fontSize: isMobile ? 44 : 76, lineHeight: isMobile ? 1.05 : 0.98, marginBottom: 20 }}>
-              Despierta con la<br />
-              <span style={{ fontStyle: "italic", fontWeight: 500 }}>energía</span> que olvidaste<br />
-              tener.
-            </h1>
-            <p className="bo-hero-sub" style={{ fontSize: isMobile ? 16 : 19, color: "var(--bo-ink-mute)", maxWidth: 480, marginBottom: 28, lineHeight: 1.55 }}>
-              Cintas bucales y tiras nasales premium para volver a respirar bien por la nariz, dejar de roncar y dormir profundo de verdad.
-            </p>
-            <div className="bo-hero-ctas" style={{ display: "flex", gap: 12, marginBottom: 36, flexWrap: "wrap" }}>
-              <button className="bo-btn bo-btn-primary" style={{ padding: isMobile ? "15px 22px" : "18px 28px", fontSize: isMobile ? 15 : 16, flex: isMobile ? "1" : "auto" }} onClick={() => nav('/producto')}>
-                Comprar ahora <Icon.Arrow width="18" height="18" />
-              </button>
-              {!isMobile && (
-                <button className="bo-btn bo-btn-ghost" style={{ padding: "18px 28px", fontSize: 16 }} onClick={() => nav('/tienda')}>
-                  Ver toda la tienda
-                </button>
-              )}
-            </div>
-            <div className="bo-hero-social" style={{ display: "flex", gap: isMobile ? 16 : 32, alignItems: "center", flexWrap: "wrap" }}>
-              <div>
-                <Stars value={5} size={16} />
-                <div style={{ fontSize: 13, color: "var(--bo-ink-mute)", marginTop: 4 }}><strong style={{ color: "var(--bo-ink)" }}>4.8/5</strong> · 2.847 reseñas</div>
+            <Reveal delay={700}>
+              <div className="bo-hero-badge" style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "8px 16px", borderRadius: 999, background: "var(--bo-cyan-tint)", color: "var(--bo-cyan-deep)", fontSize: 12, fontWeight: 600, letterSpacing: "0.02em", marginBottom: 24 }}>
+                <span style={{ width: 6, height: 6, borderRadius: 999, background: "var(--bo-cyan)" }} />
+                Avalado por más de 12.400 noches reales
               </div>
-              <div style={{ width: 1, height: 36, background: "var(--bo-line)" }} />
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ display: "flex" }}>
-                  {[{i:"JM",c:"linear-gradient(135deg,#2A4A5E,#0B1F2A)"},{i:"CR",c:"linear-gradient(135deg,#D9B89C,#9F8267)"},{i:"LP",c:"linear-gradient(135deg,#4A6B7C,#1F3848)"},{i:"AV",c:"linear-gradient(135deg,#C09A7E,#7A5A45)"},{i:"MS",c:"linear-gradient(135deg,#5A7B8C,#2C4859)"}].map((a,i) => (
-                    <div key={i} style={{ width: 32, height: 32, borderRadius: 999, background: a.c, border: "2px solid #fff", marginLeft: i > 0 ? -10 : 0, display: "grid", placeItems: "center", fontFamily: "var(--bo-font-mono)", fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,.92)", boxShadow: "0 2px 6px rgba(11,31,42,.18)" }}>{a.i}</div>
-                  ))}
+            </Reveal>
+            <Reveal delay={950} variant="up">
+              <h1 className="bo-hero-h1" style={{ fontSize: isMobile ? 42 : 72, lineHeight: isMobile ? 1.08 : 1.02, marginBottom: 20 }}>
+                Duerme profundo.<br />
+                Despierta{" "}
+                <span style={{ fontStyle: "italic", fontWeight: 500 }}>renovado.</span>
+              </h1>
+            </Reveal>
+            <Reveal delay={1150}>
+              <p className="bo-hero-sub" style={{ fontSize: isMobile ? 16 : 19, color: "var(--bo-ink-mute)", maxWidth: 480, marginBottom: 20, lineHeight: 1.55 }}>
+                Cintas bucales y tiras nasales premium para volver a respirar bien por la nariz, dejar de roncar y dormir profundo de verdad.
+              </p>
+              <p style={{ fontSize: isMobile ? 14 : 16, fontWeight: 600, color: "var(--bo-cyan-deep)", marginBottom: 28, letterSpacing: "0.01em" }}>
+                Empieza esta noche. Nota la diferencia mañana.
+              </p>
+            </Reveal>
+            <Reveal delay={1550}>
+              <div className="bo-hero-social" style={{ display: "flex", gap: isMobile ? 16 : 32, alignItems: "center", flexWrap: "wrap" }}>
+                <div>
+                  <Stars value={5} size={16} />
+                  <div style={{ fontSize: 13, color: "var(--bo-ink-mute)", marginTop: 4 }}><strong style={{ color: "var(--bo-ink)" }}>4.8/5</strong> · 2.847 reseñas</div>
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.2 }}>
-                  <strong style={{ color: "var(--bo-ink)", fontSize: 14 }}>+34.000 clientes</strong>
-                  <span style={{ fontSize: 12, color: "var(--bo-ink-mute)" }}>durmiendo mejor</span>
+                <div style={{ width: 1, height: 36, background: "var(--bo-line)" }} />
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ display: "flex" }}>
+                    {[{i:"JM",c:"linear-gradient(135deg,#2A4A5E,#0B1F2A)"},{i:"CR",c:"linear-gradient(135deg,#D9B89C,#9F8267)"},{i:"LP",c:"linear-gradient(135deg,#4A6B7C,#1F3848)"},{i:"AV",c:"linear-gradient(135deg,#C09A7E,#7A5A45)"},{i:"MS",c:"linear-gradient(135deg,#5A7B8C,#2C4859)"}].map((a,i) => (
+                      <div key={i} style={{ width: 32, height: 32, borderRadius: 999, background: a.c, border: "2px solid #fff", marginLeft: i > 0 ? -10 : 0, display: "grid", placeItems: "center", fontFamily: "var(--bo-font-mono)", fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,.92)", boxShadow: "0 2px 6px rgba(11,31,42,.18)" }}>{a.i}</div>
+                    ))}
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.2 }}>
+                    <strong style={{ color: "var(--bo-ink)", fontSize: 14 }}>+34.000 clientes</strong>
+                    <span style={{ fontSize: 12, color: "var(--bo-ink-mute)" }}>durmiendo mejor</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            </Reveal>
           </div>
-          <div className="bo-hero-img" style={{ position: "relative", aspectRatio: "1/1.05", maxWidth: isMobile ? 340 : "none", margin: isMobile ? "0 auto" : 0, width: "100%" }}>
-            <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 50% 45%,rgba(34,183,214,.22),transparent 60%)", borderRadius: "50%" }} />
-            <img src={"assets/products/cintas-bucales-pack.webp"} alt="Pack de cintas bucales BeniOptions sobre fondo degradado cian"
-              fetchPriority="high"
-              style={{ position: "absolute", inset: "5% 8% 12% 8%", width: "84%", objectFit: "contain", filter: "drop-shadow(0 40px 60px rgba(11,31,42,.18))" }} />
-            <div style={{ position: "absolute", top: "12%", left: "0%", padding: "12px 14px", borderRadius: 14, background: "#fff", boxShadow: "var(--bo-shadow-md)", display: "flex", alignItems: "center", gap: 10, maxWidth: isMobile ? 170 : 220 }}>
-              <div style={{ width: 34, height: 34, borderRadius: 10, background: "var(--bo-cyan-tint)", display: "grid", placeItems: "center", color: "var(--bo-cyan-deep)", flexShrink: 0 }}><Icon.Lung width="18" height="18" /></div>
-              <div><div style={{ fontSize: isMobile ? 12 : 13, fontWeight: 600 }}>+27% O₂ noche</div><div style={{ fontSize: 10, color: "var(--bo-ink-mute)" }}>respiración nasal</div></div>
-            </div>
-            <div style={{ position: "absolute", bottom: "16%", right: isMobile ? "0%" : "-2%", padding: "12px 14px", borderRadius: 14, background: "#fff", boxShadow: "var(--bo-shadow-md)", display: "flex", alignItems: "center", gap: 10, maxWidth: isMobile ? 170 : 220 }}>
-              <div style={{ width: 34, height: 34, borderRadius: 10, background: "var(--bo-cyan-tint)", display: "grid", placeItems: "center", color: "var(--bo-cyan-deep)", flexShrink: 0 }}><Icon.Moon width="18" height="18" /></div>
-              <div><div style={{ fontSize: isMobile ? 12 : 13, fontWeight: 600 }}>Sueño profundo +38%</div><div style={{ fontSize: 10, color: "var(--bo-ink-mute)" }}>medido en 4 semanas</div></div>
-            </div>
-          </div>
+
+          {/* IMAGEN PRODUCTO: animación float + glow cian */}
+          <Reveal delay={1400} variant="scale" duration={2.2}>
+            <img
+              src="assets/hero-product-nobg.png"
+              alt="BeniOptions — Tiras Nasales Magnéticas"
+              className="bo-hero-product"
+              style={{
+                width: isMobile ? "90%" : "100%",
+                maxWidth: isMobile ? 340 : 560,
+                display: "block",
+                margin: "0 auto",
+                marginTop: isMobile ? 0 : "-70px",
+              }}
+            />
+          </Reveal>
         </div>
       </section>
 
       <TrustBar />
 
       {/* MEDIOS */}
-      <section style={{ padding: isMobile ? "32px 20px" : "44px 56px", textAlign: "center", background: "var(--bo-bg-pure)", overflow: "hidden" }}>
+      <section style={{ padding: isMobile ? "32px 20px" : "44px 56px", textAlign: "center", background: "linear-gradient(180deg,rgba(235,248,252,0.70) 0%,rgba(223,243,249,0.70) 100%)", overflow: "hidden" }}>
         <Reveal>
           <div className="bo-eyebrow" style={{ marginBottom: 16 }}>De confianza para profesionales del descanso</div>
           <div style={{ display: "flex", justifyContent: isMobile ? "flex-start" : "space-around", alignItems: "center", opacity: .55, maxWidth: 1328, margin: "0 auto", gap: isMobile ? 28 : 0, overflowX: isMobile ? "auto" : "visible", paddingBottom: isMobile ? 4 : 0 }}>
@@ -628,7 +825,7 @@ function HomeA() {
       </section>
 
       {/* ANTES / DESPUÉS */}
-      <section style={{ padding: isMobile ? "60px 20px" : "100px 56px", background: "var(--bo-bg-pure)" }}>
+      <section style={{ padding: isMobile ? "60px 20px" : "100px 56px", background: "linear-gradient(180deg,rgba(223,243,249,0.70) 0%,rgba(232,245,250,0.70) 100%)" }}>
         <Reveal style={{ textAlign: "center", marginBottom: isMobile ? 40 : 64 }}>
           <div className="bo-eyebrow" style={{ marginBottom: 14 }}>El problema silencioso</div>
           <h2 className="bo-section-h2" style={{ fontSize: isMobile ? 34 : 56, maxWidth: 800, margin: "0 auto" }}>Dormir 8 horas no sirve si <span style={{ color: "var(--bo-cyan-deep)" }}>respiras mal</span>.</h2>
@@ -656,13 +853,13 @@ function HomeA() {
       </section>
 
       {/* PRODUCTOS */}
-      <section id="seccion-productos" style={{ padding: isMobile ? "60px 20px" : "100px 56px", background: "var(--bo-bg)" }}>
+      <section id="seccion-productos" style={{ padding: isMobile ? "60px 20px" : "100px 56px", background: "linear-gradient(180deg,rgba(232,245,250,0.70) 0%,rgba(216,239,247,0.70) 100%)" }}>
         <Reveal style={{ display: "flex", justifyContent: "space-between", alignItems: isMobile ? "flex-start" : "flex-end", flexDirection: isMobile ? "column" : "row", gap: isMobile ? 8 : 0, marginBottom: isMobile ? 32 : 56, maxWidth: 1328, margin: isMobile ? "0 0 32px" : "0 auto 56px" }}>
           <div>
             <div className="bo-eyebrow" style={{ marginBottom: 12 }}>Catálogo BeniOptions</div>
             <h2 className="bo-section-h2" style={{ fontSize: isMobile ? 34 : 56, maxWidth: 600 }}>Tres formas de respirar bien.</h2>
           </div>
-          <a href="#/tienda" style={{ display: "inline-flex", alignItems: "center", gap: 8, fontWeight: 600, color: "var(--bo-cyan-deep)", textDecoration: "none", cursor: "pointer", fontSize: 14 }} onClick={(e) => { e.preventDefault(); nav('/tienda'); }}>
+          <a href="/tienda" style={{ display: "inline-flex", alignItems: "center", gap: 8, fontWeight: 600, color: "var(--bo-cyan-deep)", textDecoration: "none", cursor: "pointer", fontSize: 14 }} onClick={(e) => { e.preventDefault(); nav('/tienda'); }}>
             Ver toda la tienda <Icon.Arrow width="16" height="16" />
           </a>
         </Reveal>
@@ -674,7 +871,7 @@ function HomeA() {
             { img:"assets/products/magneticas-pack.webp", tag:"PREMIUM", name:"Tiras Nasales Magnéticas", desc:"Sistema magnético reutilizable. 30 recambios incluidos.", price:"34,90", was:"44,90", color:"var(--bo-gold)" },
           ].map((p,i) => (
             <article key={i} className="bo-card" style={{ background: "var(--bo-bg-pure)", borderRadius: isMobile ? 16 : 24, overflow: "hidden", border: "1px solid var(--bo-line-soft)" }}>
-              <a href="#/producto" aria-label={`Ver ${p.name}`} onClick={(e) => { e.preventDefault(); nav('/producto'); }} style={{ display:"block", textDecoration:"none", color:"inherit" }}>
+              <a href="/producto" aria-label={`Ver ${p.name}`} onClick={(e) => { e.preventDefault(); nav('/producto'); }} style={{ display:"block", textDecoration:"none", color:"inherit" }}>
                 <div style={{ height: isMobile ? 200 : 320, position: "relative", background: "linear-gradient(180deg,var(--bo-cyan-tint),#fff)", display: "grid", placeItems: "center" }}>
                   <div style={{ position: "absolute", top: 12, left: 12, padding: "5px 10px", borderRadius: 999, background: p.color, color: "#fff", fontSize: 9, fontFamily: "var(--bo-font-mono)", letterSpacing: "0.14em", fontWeight: 600 }}>{p.tag}</div>
                   <img src={p.img} alt={p.name} loading="lazy" style={{ maxHeight: "78%", maxWidth: "78%", objectFit: "contain" }} />
@@ -699,21 +896,21 @@ function HomeA() {
       </section>
 
       {/* COMPARATIVA TÉCNICA */}
-      <section style={{ padding: isMobile ? "60px 20px" : "100px 56px", background: "var(--bo-bg-pure)" }}>
+      <section style={{ padding: isMobile ? "60px 20px" : "100px 56px", background: "linear-gradient(160deg,rgba(216,239,247,0.70) 0%,rgba(228,246,251,0.70) 100%)" }}>
         <div style={{ maxWidth: 1328, margin: "0 auto" }}>
           <ProductCompare isMobile={isMobile}/>
         </div>
       </section>
 
       {/* BUNDLE */}
-      <section style={{ padding: isMobile ? "0 20px 60px" : "0 56px 100px", background: "var(--bo-bg-pure)" }}>
+      <section style={{ padding: isMobile ? "0 20px 60px" : "0 56px 100px", background: "linear-gradient(180deg,rgba(228,246,251,0.70) 0%,rgba(223,243,249,0.70) 100%)" }}>
         <div style={{ maxWidth: 1328, margin: "0 auto" }}>
           <BundleBlock isMobile={isMobile}/>
         </div>
       </section>
 
       {/* CÓMO FUNCIONA */}
-      <section id="seccion-como-funciona" style={{ padding: isMobile ? "60px 20px" : "100px 56px", background: "var(--bo-bg-pure)" }}>
+      <section id="seccion-como-funciona" style={{ padding: isMobile ? "60px 20px" : "100px 56px", background: "linear-gradient(180deg,rgba(223,243,249,0.70) 0%,rgba(235,248,252,0.70) 100%)" }}>
         <Reveal style={{ textAlign: "center", marginBottom: isMobile ? 48 : 72 }}>
           <div className="bo-eyebrow" style={{ marginBottom: 14 }}>Cómo funciona</div>
           <h2 style={{ fontSize: isMobile ? 34 : 56 }}>Cuatro pasos. Una mejor noche.</h2>
@@ -722,7 +919,7 @@ function HomeA() {
           {!isMobile && <div style={{ position: "absolute", top: 56, left: "12%", right: "12%", height: 2, background: "repeating-linear-gradient(90deg,var(--bo-cyan) 0 6px,transparent 6px 14px)", zIndex: 0 }} />}
           {[{n:"01",t:"Limpia tus labios",d:"Asegúrate de que tu boca esté limpia y seca."},{n:"02",t:"Despega la cinta",d:"Separa la cinta del papel con cuidado."},{n:"03",t:"Coloca y presiona",d:"Aplícala sobre los labios y presiona suave."},{n:"04",t:"Duerme profundo",d:"Disfruta de una noche reparadora de verdad."}].map((s,i) => (
             <div key={i} style={{ position: "relative", zIndex: 1, textAlign: "center", padding: isMobile ? "0 8px" : "0 16px" }}>
-              <div style={{ width: isMobile ? 72 : 112, height: isMobile ? 72 : 112, borderRadius: "50%", background: "var(--bo-bg-pure)", border: "2px solid var(--bo-cyan)", display: "grid", placeItems: "center", margin: "0 auto 16px", fontFamily: "var(--bo-font-display)", fontSize: isMobile ? 22 : 34, fontWeight: 700, color: "var(--bo-cyan-deep)" }}>{s.n}</div>
+              <div style={{ width: isMobile ? 72 : 112, height: isMobile ? 72 : 112, borderRadius: "50%", background: "rgba(220,243,250,0.7)", border: "2px solid var(--bo-cyan)", display: "grid", placeItems: "center", margin: "0 auto 16px", fontFamily: "var(--bo-font-display)", fontSize: isMobile ? 22 : 34, fontWeight: 700, color: "var(--bo-cyan-deep)" }}>{s.n}</div>
               <h4 style={{ fontSize: isMobile ? 15 : 20, marginBottom: 8 }}>{s.t}</h4>
               <p style={{ fontSize: isMobile ? 13 : 14, color: "var(--bo-ink-mute)" }}>{s.d}</p>
             </div>
@@ -732,7 +929,7 @@ function HomeA() {
 
       {/* CIENCIA */}
       <section id="seccion-ciencia" style={{ padding: isMobile ? "60px 20px" : "100px 56px", background: "var(--bo-bg-deep)", color: "#fff", position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 20% 50%,rgba(34,183,214,.16),transparent 50%)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 20% 50%,rgba(34,183,214,.28),transparent 55%)", pointerEvents: "none" }} />
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? 40 : 80, alignItems: "center", position: "relative", maxWidth: 1328, margin: "0 auto" }}>
           <Reveal variant="left">
             <div className="bo-eyebrow" style={{ marginBottom: 14, color: "var(--bo-cyan-bright)" }}>La ciencia detrás</div>
@@ -763,7 +960,7 @@ function HomeA() {
       </section>
 
       {/* TESTIMONIOS */}
-      <section id="seccion-reseñas" style={{ padding: isMobile ? "60px 20px" : "100px 56px", background: "var(--bo-bg-pure)" }}>
+      <section id="seccion-reseñas" style={{ padding: isMobile ? "60px 20px" : "100px 56px", background: "linear-gradient(160deg,rgba(235,248,252,0.70) 0%,rgba(223,243,249,0.70) 100%)" }}>
         <Reveal style={{ textAlign: "center", marginBottom: isMobile ? 36 : 56 }}>
           <div className="bo-eyebrow" style={{ marginBottom: 14 }}>Reseñas verificadas</div>
           <h2 style={{ fontSize: isMobile ? 32 : 56 }}>2.847 personas durmiendo mejor.</h2>
@@ -777,7 +974,7 @@ function HomeA() {
             { name:"Javier M.", age:58, days:"92 noches", text:"Soy escéptico de naturaleza, pero los datos de mi Oura no mienten. Mi sueño profundo ha subido un 30%. Producto serio, calidad de farmacia.", rating:5 },
             { name:"Lourdes P.", age:49, days:"21 noches", text:"Las tiras nasales son un descubrimiento. Tenía la nariz siempre congestionada por la noche y ahora respiro perfectamente. Despierto descansada.", rating:5 },
           ].map((t,i) => (
-            <article key={i} className="bo-card" style={{ padding: isMobile ? 22 : 32, borderRadius: 20, background: "var(--bo-bg-soft)", border: "1px solid var(--bo-line-soft)" }}>
+            <article key={i} className="bo-card" style={{ padding: isMobile ? 22 : 32, borderRadius: 20, background: "rgba(215,240,250,0.55)", border: "1px solid rgba(34,183,214,0.18)" }}>
               <Stars value={t.rating} size={14} />
               <p style={{ fontSize: isMobile ? 15 : 17, lineHeight: 1.55, color: "var(--bo-ink)", margin: "16px 0 20px" }}>"{t.text}"</p>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--bo-line-soft)", paddingTop: 14 }}>
@@ -790,7 +987,7 @@ function HomeA() {
       </section>
 
       {/* MI HISTORIA */}
-      <section style={{ padding: isMobile ? "60px 20px" : "120px 56px", background: "var(--bo-bg-pure)", borderTop: "1px solid var(--bo-line-soft)", position: "relative", overflow: "hidden" }}>
+      <section style={{ padding: isMobile ? "60px 20px" : "120px 56px", background: "linear-gradient(180deg,rgba(223,243,249,0.70) 0%,rgba(235,248,252,0.70) 100%)", borderTop: "1px solid rgba(34,183,214,0.2)", position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", top: -200, left: -200, width: 600, height: 600, borderRadius: "50%", background: "radial-gradient(circle,var(--bo-cyan-tint),transparent 70%)", opacity: .6 }} />
         <div style={{ maxWidth: 1180, margin: "0 auto", position: "relative", display: "grid", gridTemplateColumns: isMobile ? "1fr" : "0.85fr 1fr", gap: isMobile ? 40 : 72, alignItems: "center" }}>
           <Reveal variant="left" style={{ position: "relative", maxWidth: isMobile ? 320 : "none", margin: isMobile ? "0 auto" : 0 }}>
@@ -861,7 +1058,11 @@ function CatalogA() {
   useSEO({
     title: "Tienda — Cintas Bucales y Tiras Nasales | BeniOptions",
     description: "Compra cintas bucales y tiras nasales premium. Envío gratis en pedidos +30€. Garantía 30 noches sin riesgo. Elige el pack que más te conviene.",
-    canonical: "https://www.benioptions.es/#/tienda",
+    canonical: "https://www.benioptions.es/tienda",
+    breadcrumb: [
+      { name: "Inicio", url: "https://www.benioptions.es/" },
+      { name: "Tienda", url: "https://www.benioptions.es/tienda" },
+    ],
   });
   const products = [
     { img:"assets/products/cintas-bucales-pack.webp", tag:"MÁS VENDIDO", name:"Cintas Bucales Premium", cat:"Sueño", price:"24,90", was:"32,90", rating:4.9, reviews:1248 },
@@ -937,7 +1138,7 @@ function CatalogA() {
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(3,1fr)", gap: isMobile ? 14 : 24, paddingTop: isMobile ? 0 : 28 }}>
           {products.map((p,i) => (
             <article key={i} className="bo-card" style={{ background: "#fff", borderRadius: isMobile ? 14 : 20, overflow: "hidden", border: "1px solid var(--bo-line-soft)" }}>
-              <a href="#/producto" aria-label={`Ver ${p.name}`} onClick={(e) => { e.preventDefault(); nav('/producto'); }} style={{ display:"block", textDecoration:"none", color:"inherit" }}>
+              <a href="/producto" aria-label={`Ver ${p.name}`} onClick={(e) => { e.preventDefault(); nav('/producto'); }} style={{ display:"block", textDecoration:"none", color:"inherit" }}>
                 <div style={{ height: isMobile ? 160 : 280, background: "linear-gradient(180deg,var(--bo-cyan-tint),#fff)", display: "grid", placeItems: "center", position: "relative" }}>
                   <div style={{ position: "absolute", top: 10, left: 10, padding: "4px 8px", borderRadius: 999, background: "var(--bo-ink)", color: "#fff", fontSize: 8, fontFamily: "var(--bo-font-mono)", letterSpacing: "0.14em", fontWeight: 600 }}>{p.tag}</div>
                   <img src={p.img} alt={p.name} loading="lazy" style={{ maxHeight: "78%", maxWidth: "78%", objectFit: "contain" }}/>
@@ -977,7 +1178,12 @@ function ProductA() {
   useSEO({
     title: "Cintas Bucales Premium — Adhesivo Hipoalergénico, 30 Noches | BeniOptions",
     description: "Cintas bucales hipoalergénicas que cierran la boca mientras duermes. Transpirables, sin latex, adhesivo médico. 1.248 reseñas verificadas. 4.9/5 estrellas.",
-    canonical: "https://www.benioptions.es/#/producto",
+    canonical: "https://www.benioptions.es/producto",
+    breadcrumb: [
+      { name: "Inicio", url: "https://www.benioptions.es/" },
+      { name: "Tienda", url: "https://www.benioptions.es/tienda" },
+      { name: "Cintas Bucales Premium", url: "https://www.benioptions.es/producto" },
+    ],
   });
 
   const gallery = [
@@ -1373,7 +1579,7 @@ function CartA() {
   useSEO({
     title: "Tu carrito | BeniOptions",
     description: "Revisa tu selección y completa tu pedido. Envío gratis en pedidos +30€. Garantía 30 noches.",
-    canonical: "https://www.benioptions.es/#/carrito",
+    canonical: "https://www.benioptions.es/carrito",
     noindex: true,
   });
   const sub = items.reduce((a,b) => a + b.price * b.qty, 0);
@@ -1461,7 +1667,7 @@ function CheckoutA() {
   useSEO({
     title: "Pago seguro | BeniOptions",
     description: "Completa tu pedido de forma segura. SSL cifrado. Garantía de 30 noches.",
-    canonical: "https://www.benioptions.es/#/checkout",
+    canonical: "https://www.benioptions.es/checkout",
     noindex: true,
   });
   return (
@@ -1552,7 +1758,11 @@ function FaqA() {
   useSEO({
     title: "Preguntas Frecuentes — Cintas Bucales y Tiras Nasales | BeniOptions",
     description: "Resolvemos tus dudas sobre cintas bucales y tiras nasales BeniOptions: seguridad, uso, envíos y garantía de 30 noches. Atención personalizada disponible.",
-    canonical: "https://www.benioptions.es/#/faq",
+    canonical: "https://www.benioptions.es/faq",
+    breadcrumb: [
+      { name: "Inicio", url: "https://www.benioptions.es/" },
+      { name: "Preguntas Frecuentes", url: "https://www.benioptions.es/faq" },
+    ],
   });
   const cats = [
     {name:"Producto",qs:[["¿Las cintas bucales son seguras?","Sí. El adhesivo es médico, hipoalergénico y respira con tu piel. Están testadas dermatológicamente y diseñadas para uso nocturno prolongado en adultos sanos."],["¿Pueden irritar la piel?","Hemos trabajado el adhesivo para que no irrite ni deje marca. En pieles muy sensibles recomendamos empezar con noches alternas la primera semana."],["¿Son reutilizables?","Cada cinta es de un solo uso (excepto las magnéticas, que son reutilizables con recambios)."]]},
@@ -1600,7 +1810,11 @@ function AboutA() {
   useSEO({
     title: "Nuestra Historia — Por Qué Existe BeniOptions | BeniOptions",
     description: "Aníbal, fundador de BeniOptions, comparte cómo respirar mejor por la noche cambió su vida. La historia real detrás de la marca.",
-    canonical: "https://www.benioptions.es/#/nosotros",
+    canonical: "https://www.benioptions.es/nosotros",
+    breadcrumb: [
+      { name: "Inicio", url: "https://www.benioptions.es/" },
+      { name: "Sobre BeniOptions", url: "https://www.benioptions.es/nosotros" },
+    ],
   });
   return (
     <div className="bo-root" style={{ background:"var(--bo-bg-pure)" }}>
@@ -1692,12 +1906,12 @@ function AboutA() {
 /* ===== ROUTER & EXPORT ===== */
 
 export default function App() {
-  const [hash, setHash] = useState(window.location.hash || '#/');
+  const [path, setPath] = useState(window.location.pathname);
 
   useEffect(() => {
-    const handler = () => setHash(window.location.hash || '#/');
-    window.addEventListener('hashchange', handler);
-    return () => window.removeEventListener('hashchange', handler);
+    const handler = () => setPath(window.location.pathname);
+    window.addEventListener('popstate', handler);
+    return () => window.removeEventListener('popstate', handler);
   }, []);
 
   useEffect(() => {
@@ -1711,11 +1925,13 @@ export default function App() {
     } else {
       window.scrollTo({ top: 0, behavior: 'instant' });
     }
-  }, [hash]);
+  }, [path]);
 
-  const page = hash.replace(/^#/, '') || '/';
+  const normalizedPath = BASE_PATH && path.startsWith(BASE_PATH)
+    ? (path.slice(BASE_PATH.length) || '/')
+    : path;
 
-  switch (page) {
+  switch (normalizedPath) {
     case '/tienda':   return <CatalogA />;
     case '/producto': return <ProductA />;
     case '/carrito':  return <CartA />;
