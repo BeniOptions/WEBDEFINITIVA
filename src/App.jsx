@@ -649,6 +649,7 @@ function WaveBackground() {
 function HeroVideo() {
   const videoRef = useRef(null);
   const [faded, setFaded] = useState(false);
+  const isMobile = useIsMobile();
 
   const supportsVP9 = useRef(
     typeof document !== 'undefined' &&
@@ -660,9 +661,9 @@ function HeroVideo() {
     if (!vid) return;
     vid.play().catch(() => {});
     /* Empieza a desvanecerse cuando aparecen las palabras principales */
-    const t = setTimeout(() => setFaded(true), 800);
+    const t = setTimeout(() => setFaded(true), isMobile ? 1200 : 800);
     return () => clearTimeout(t);
-  }, []);
+  }, [isMobile]);
 
   return (
     <video
@@ -678,6 +679,8 @@ function HeroVideo() {
         opacity: faded ? 0 : 1,
         transition: 'opacity 1.4s ease-out',
         pointerEvents: 'none',
+        transform: isMobile ? 'scale(1.58)' : 'none',
+        transformOrigin: 'center center',
         ...(supportsVP9 ? {} : { mixBlendMode: 'multiply' }),
       }}
     >
@@ -732,7 +735,11 @@ function HomeA() {
           }} />
         )}
         {isMobile && (
-          <div style={{ position: "absolute", inset: 0, background: "rgba(240,251,254,0.82)", zIndex: 2, pointerEvents: "none" }} />
+          <div style={{
+            position: "absolute", inset: 0,
+            background: "radial-gradient(circle at center, rgba(240,251,254,0.2) 0%, rgba(240,251,254,0.72) 80%)",
+            zIndex: 2, pointerEvents: "none"
+          }} />
         )}
 
         {/* Grid: texto (izq) | imagen producto (dcha) */}
