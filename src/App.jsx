@@ -864,7 +864,7 @@ function HomeA() {
           </a>
         </Reveal>
         <RevealList stagger={100} variant="scale"
-          style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "1fr 1fr 1fr", gap: isMobile ? 16 : 24, maxWidth: 1328, margin: "0 auto" }}>
+          style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr", gap: isMobile ? 24 : 24, maxWidth: 1328, margin: "0 auto" }}>
           {[
             { img:"assets/products/cintas-bucales-pack.webp", tag:"MÁS VENDIDO", name:"Cintas Bucales Premium", desc:"Adiós a respirar por la boca. Adhesivo hipoalergénico, 30 noches.", price:"24,90", was:"32,90", color:"var(--bo-cyan)" },
             { img:"assets/products/tiras-pack.webp", tag:"NUEVO", name:"Tiras Nasales", desc:"Abren las fosas nasales suavemente. Más oxígeno, sueño y deporte.", price:"19,90", was:null, color:"var(--bo-cyan-deep)" },
@@ -1135,24 +1135,26 @@ function CatalogA() {
             ))}
           </aside>
         )}
-        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(3,1fr)", gap: isMobile ? 14 : 24, paddingTop: isMobile ? 0 : 28 }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3,1fr)", gap: isMobile ? 24 : 24, paddingTop: isMobile ? 0 : 28 }}>
           {products.map((p,i) => (
-            <article key={i} className="bo-card" style={{ background: "#fff", borderRadius: isMobile ? 14 : 20, overflow: "hidden", border: "1px solid var(--bo-line-soft)" }}>
+            <article key={i} className="bo-card" style={{ background: "#fff", borderRadius: isMobile ? 16 : 20, overflow: "hidden", border: "1px solid var(--bo-line-soft)" }}>
               <a href="/producto" aria-label={`Ver ${p.name}`} onClick={(e) => { e.preventDefault(); nav('/producto'); }} style={{ display:"block", textDecoration:"none", color:"inherit" }}>
-                <div style={{ height: isMobile ? 160 : 280, background: "linear-gradient(180deg,var(--bo-cyan-tint),#fff)", display: "grid", placeItems: "center", position: "relative" }}>
+                <div style={{ height: isMobile ? 200 : 280, background: "linear-gradient(180deg,var(--bo-cyan-tint),#fff)", display: "grid", placeItems: "center", position: "relative" }}>
                   <div style={{ position: "absolute", top: 10, left: 10, padding: "4px 8px", borderRadius: 999, background: "var(--bo-ink)", color: "#fff", fontSize: 8, fontFamily: "var(--bo-font-mono)", letterSpacing: "0.14em", fontWeight: 600 }}>{p.tag}</div>
                   <img src={p.img} alt={p.name} loading="lazy" style={{ maxHeight: "78%", maxWidth: "78%", objectFit: "contain" }}/>
                 </div>
-                <div style={{ padding: isMobile ? 12 : 22 }}>
+                <div style={{ padding: isMobile ? 16 : 22 }}>
                   {!isMobile && <div style={{ fontSize: 11, color: "var(--bo-cyan-deep)", fontFamily: "var(--bo-font-mono)", letterSpacing: "0.12em", marginBottom: 6 }}>{p.cat.toUpperCase()}</div>}
-                  <h3 style={{ fontSize: isMobile ? 14 : 18, marginBottom: isMobile ? 6 : 10 }}>{p.name}</h3>
+                  <h3 style={{ fontSize: isMobile ? 16 : 18, marginBottom: isMobile ? 8 : 10 }}>{p.name}</h3>
                   {!isMobile && <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, fontSize: 12, color: "var(--bo-ink-mute)" }}><Stars value={Math.round(p.rating)} size={12}/>{p.rating} · {p.reviews}</div>}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div>
-                      <span style={{ fontSize: isMobile ? 16 : 20, fontWeight: 700, fontFamily: "var(--bo-font-display)" }}>{p.price}€</span>
+                      <span style={{ fontSize: isMobile ? 18 : 20, fontWeight: 700, fontFamily: "var(--bo-font-display)" }}>{p.price}€</span>
                       {p.was && !isMobile && <span style={{ fontSize: 13, color: "var(--bo-ink-faint)", textDecoration: "line-through", marginLeft: 6 }}>{p.was}€</span>}
                     </div>
-                    <button aria-label={`Añadir ${p.name} al carrito`} className="bo-btn bo-btn-cyan" style={{ padding: isMobile ? "7px 10px" : "8px 14px", fontSize: 11 }} onClick={e => { e.preventDefault(); e.stopPropagation(); nav('/carrito'); }}><Icon.Plus width="11" height="11"/></button>
+                    <button aria-label={`Añadir ${p.name} al carrito`} className="bo-btn bo-btn-cyan" style={{ padding: isMobile ? "8px 16px" : "8px 14px", fontSize: 11 }} onClick={e => { e.preventDefault(); e.stopPropagation(); nav('/carrito'); }}>
+                      {isMobile ? "Añadir al carrito" : <Icon.Plus width="11" height="11"/>}
+                    </button>
                   </div>
                 </div>
               </a>
