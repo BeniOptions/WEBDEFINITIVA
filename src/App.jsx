@@ -799,20 +799,52 @@ function HomeA() {
             </Reveal>
           </div>
 
-          {/* IMAGEN PRODUCTO: animación float + glow cian */}
+          {/* IMAGEN PRODUCTO: animación float + glow cian con botón de tienda */}
           <Reveal delay={1400} variant="scale" duration={2.2}>
-            <img
-              src="assets/hero-product-nobg.png"
-              alt="BeniOptions — Tiras Nasales Magnéticas"
+            <div
               className="bo-hero-product"
               style={{
+                position: "relative",
                 width: isMobile ? "90%" : "100%",
                 maxWidth: isMobile ? 340 : 560,
-                display: "block",
                 margin: "0 auto",
                 marginTop: isMobile ? 0 : "-70px",
               }}
-            />
+            >
+              <img
+                src="assets/hero-product-nobg.png"
+                alt="BeniOptions — Tiras Nasales Magnéticas"
+                style={{
+                  width: "100%",
+                  height: "auto",
+                  display: "block",
+                  cursor: "pointer",
+                }}
+                onClick={() => nav('/tienda')}
+              />
+              <button
+                className="bo-btn bo-btn-cyan"
+                style={{
+                  position: "absolute",
+                  bottom: isMobile ? "8%" : "12%",
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  whiteSpace: "nowrap",
+                  boxShadow: "var(--bo-shadow-lg)",
+                  fontSize: isMobile ? 12 : 14,
+                  padding: isMobile ? "8px 16px" : "12px 24px",
+                  zIndex: 5,
+                  letterSpacing: "-0.01em",
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  nav('/tienda');
+                }}
+              >
+                Ver Tienda
+                <Icon.Arrow width={isMobile ? "12" : "14"} height={isMobile ? "12" : "14"} />
+              </button>
+            </div>
           </Reveal>
         </div>
       </section>
